@@ -182,7 +182,7 @@ class YtLoungeApi:
         elif event_type == "noop":
             pass  # no-op
         else:
-            self._logger.debug("Unprocessed event %s %s", event_type, args)
+            self._logger.debug(f"Unprocessed event {event_type} {args}")
 
     def _process_events(self, events):
         for event in events:
@@ -269,7 +269,7 @@ class YtLoungeApi:
 
                 if resp.status != 200:
                     self._logger.warning(
-                        "Unknown reply to connect %i %s", resp.status, resp.reason
+                        f"Unknown reply to connect {resp.status} {resp.reason}"
                     )
                     return False
                 lines = text.splitlines()
