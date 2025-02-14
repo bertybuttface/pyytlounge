@@ -1,11 +1,11 @@
 """Wrapper class for YouTube Lounge API"""
 
 import asyncio
-import json
 import logging
 from typing import Any, AsyncIterator, Dict, List, Callable, Optional
 
 import aiohttp
+import orjson
 from aiohttp import ClientTimeout, ClientPayloadError
 
 from .api import api_base
@@ -41,7 +41,7 @@ class YtLoungeApi:
     async def __aenter__(self):
         try:
             self.conn = aiohttp.TCPConnector(ttl_dns_cache=300)
-            self.session = aiohttp.ClientSession(connector=self.conn)
+            self.session = aiohttp.ClientSession(connector=self.conn, json_serialize=lambda x: orjson.dumps(x).decode())
             return self
         except Exception:
             await self.close()
@@ -107,7 +107,7 @@ class YtLoungeApi:
         pair_data = {"pairing_code": pairing_code}
         async with self.session.post(url=pair_url, data=pair_data) as resp:
             try:
-                screens = await resp.json()
+                screens = await resp.json(loads=orjson.loads)
                 screen = screens["screen"]
                 self._screen_name = screen["name"]
                 self.auth.screen_id = screen["screenId"]
@@ -126,7 +126,7 @@ class YtLoungeApi:
         refresh_data = {"screen_ids": self.auth.screen_id}
         async with self.session.post(url=refresh_url, data=refresh_data) as resp:
             try:
-                screens = await resp.json()
+                screens = await resp.json(loads=orjson.loads)
                 screen = screens["screens"][0]
                 self.auth.screen_id = screen["screenId"]
                 self.auth.lounge_id_token = screen["loungeToken"]
@@ -175,11 +175,11 @@ class YtLoungeApi:
             self._update_state()
         elif event_type == "loungeStatus":
             data: _LoungeStatus = args[0]
-            devices: List[_Device] = json.loads(data["devices"])
+            devices: List[_Device] = orjson.loads(data["devices"])
             for device in devices:
                 if device["type"] == "LOUNGE_SCREEN":
                     self._screen_name = device["name"]
-                    self._device_info = json.loads(device.get("deviceInfo", "null"))
+                    self._device_info = orjson.loads(device.get("deviceInfo", "null"))
                     break
         elif event_type == "loungeScreenDisconnected":
             self.state = PlaybackState(self._logger)
@@ -217,7 +217,7 @@ class YtLoungeApi:
                 chunk_remaining = chunk_remaining - len(line) - 1
 
                 if chunk_remaining == 0:
-                    events: List = json.loads(current_chunk)
+                    events: List = orjson.loads(current_chunk)
                     yield events
 
     async def is_available(self) -> bool:
@@ -232,7 +232,7 @@ class YtLoungeApi:
         url = f"{api_base}/pairing/get_screen_availability"
 
         result = await self.session.post(url=url, data=body)
-        status = await result.json()
+        status = await result.json(loads=orjson.loads)
         if "screens" in status and len(status["screens"]) > 0:
             return status["screens"][0]["status"] == "online"
 

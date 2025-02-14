@@ -15,6 +15,7 @@ classifiers = [
 ]
 dependencies = [
   'aiohttp>=3.11.12',
+  'orjson>=3.10,<4',
 ]
 
 [project.urls]
